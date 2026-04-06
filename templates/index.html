@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Prep Planner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #faf9f6; --card: #ffffff; --primary: #4a7c59; --primary-light: #6a9e78;
+            --primary-dark: #3a6347; --accent: #e8a838; --accent-light: #f5c563;
+            --text: #2d2d2d; --text-light: #6b6b6b; --border: #e2e0dc;
+            --breakfast: #f0a04b; --lunch: #4a90d9; --dinner: #9b59b6;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08); --radius: 14px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white; padding: 1.2rem 2rem; position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 4px 20px rgba(74,124,89,0.3);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        header h1 { font-size: 1.6rem; font-weight: 700; }
+        header p { opacity: 0.9; font-size: 0.9rem; }
+        .header-right { display: flex; align-items: center; gap: 1rem; }
+        .user-badge { background: rgba(255,255,255,0.2); padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; }
+        .logout-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.4rem 1rem;
+            border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: background 0.3s;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+        .tabs { display: flex; justify-content: center; gap: 0.5rem; padding: 1rem 1rem 0; flex-wrap: wrap; }
+        .tab {
+            padding: 0.7rem 1.5rem; border: none; border-radius: 30px; cursor: pointer;
+            font-size: 0.95rem; font-weight: 600; transition: all 0.3s;
+            background: var(--card); color: var(--text-light); box-shadow: var(--shadow);
+        }
+        .tab:hover { transform: translateY(-2px); }
+        .tab.active { color: white; }
+        .tab[data-tab="all"].active { background: var(--primary); }
+        .tab[data-tab="breakfast"].active { background: var(--breakfast); }
+        .tab[data-tab="lunch"].active { background: var(--lunch); }
+        .tab[data-tab="dinner"].active { background: var(--dinner); }
+        .tab[data-tab="selected"].active { background: var(--accent); }
+        .tab[data-tab="add"].active { background: #e74c3c; }
+        .selected-count { background: var(--accent); color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; margin-left: 0.3rem; }
+
+        .search-bar { max-width: 500px; margin: 1rem auto; padding: 0 1rem; }
+        .search-bar input { width: 100%; padding: 0.8rem 1.2rem; border: 2px solid var(--border); border-radius: 30px; font-size: 1rem; outline: none; transition: border 0.3s; }
+        .search-bar input:focus { border-color: var(--primary); }
+
+        .meal-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.2rem; padding: 1rem 1.5rem 2rem; max-width: 1400px; margin: 0 auto;
+        }
+        .meal-card {
+            background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+            overflow: hidden; transition: all 0.3s; position: relative;
+        }
+        .meal-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+        .meal-card.selected { outline: 3px solid var(--accent); }
+        .category-stripe { height: 5px; width: 100%; }
+        .meal-card[data-category="breakfast"] .category-stripe { background: var(--breakfast); }
+        .meal-card[data-category="lunch"] .category-stripe { background: var(--lunch); }
+        .meal-card[data-category="dinner"] .category-stripe { background: var(--dinner); }
+        .card-body { padding: 1.2rem; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+        .meal-card h3 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+        .badge { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 20px; color: white; white-space: nowrap; margin-left: 0.5rem; }
+        .badge.breakfast { background: var(--breakfast); }
+        .badge.lunch { background: var(--lunch); }
+        .badge.dinner { background: var(--dinner); }
+        .meta { display: flex; gap: 1rem; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.6rem; }
+        .description { font-size: 0.9rem; color: var(--text-light); line-height: 1.5; margin-bottom: 0.8rem; }
+        .ingredients-line { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+
+        .steps { display: none; padding: 0; list-style: none; counter-reset: step; }
+        .meal-card.expanded .steps { display: block; }
+        .steps li { counter-increment: step; padding: 0.5rem 0 0.5rem 2.2rem; position: relative; font-size: 0.88rem; line-height: 1.5; border-bottom: 1px solid #f0f0f0; }
+        .steps li:last-child { border-bottom: none; }
+        .steps li::before {
+            content: counter(step); position: absolute; left: 0; top: 0.5rem;
+            width: 1.6rem; height: 1.6rem; background: var(--primary); color: white;
+            border-radius: 50%; font-size: 0.75rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .toggle-steps { background: none; border: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 0.85rem; padding: 0.3rem 0; }
+        .select-btn {
+            position: absolute; top: 1rem; right: 1rem; width: 32px; height: 32px;
+            border-radius: 50%; border: 2px solid var(--border); background: white;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s; font-size: 1rem; z-index: 2;
+        }
+        .select-btn:hover { border-color: var(--accent); }
+        .meal-card.selected .select-btn { background: var(--accent); border-color: var(--accent); color: white; }
+        .delete-btn {
+            position: absolute; top: 1rem; right: 3.2rem; width: 28px; height: 28px;
+            border-radius: 50%; border: none; background: #e74c3c; color: white;
+            cursor: pointer; font-size: 0.8rem; display: none; align-items: center;
+            justify-content: center; z-index: 2;
+        }
+        .meal-card.custom .delete-btn { display: flex; }
+
+        .add-section { display: none; max-width: 600px; margin: 1rem auto 2rem; padding: 0 1.5rem; }
+        .add-section.visible { display: block; }
+        .form-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2rem; }
+        .form-card h2 { margin-bottom: 1.5rem; color: var(--primary); }
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 0.7rem 1rem; border: 2px solid var(--border);
+            border-radius: 10px; font-size: 0.95rem; outline: none; font-family: inherit; transition: border 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group small { color: var(--text-light); font-size: 0.8rem; }
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 0.8rem 2rem; border-radius: 30px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.3s; width: 100%; }
+        .btn-submit:hover { background: var(--primary-dark); }
+
+        .meal-plan-summary { display: none; max-width: 900px; margin: 1rem auto 2rem; padding: 0 1.5rem; }
+        .meal-plan-summary.visible { display: block; }
+        .plan-section { margin-bottom: 1.5rem; }
+        .plan-section h3 { font-size: 1.1rem; margin-bottom: 0.8rem; padding-bottom: 0.4rem; border-bottom: 2px solid var(--border); }
+        .plan-meal { display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 1rem; background: var(--card); border-radius: 10px; margin-bottom: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .remove-btn { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.1rem; }
+        .shuffle-btn { background: var(--accent); color: white; border: none; padding: 0.8rem 2rem; border-radius: 30px; font-size: 1rem; font-weight: 600; cursor: pointer; display: block; margin: 1rem auto; }
+        .shuffle-btn:hover { background: var(--accent-light); }
+        .print-btn { background: var(--primary); color: white; border: none; padding: 0.8rem 2rem; border-radius: 30px; font-size: 1rem; font-weight: 600; cursor: pointer; display: block; margin: 0.5rem auto; }
+        .print-btn:hover { background: var(--primary-dark); }
+        .empty-state { text-align: center; padding: 3rem; color: var(--text-light); }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .loading { text-align: center; padding: 3rem; color: var(--text-light); font-size: 1.1rem; }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 1.3rem; }
+            header { flex-direction: column; gap: 0.5rem; text-align: center; }
+            .meal-grid { grid-template-columns: 1fr; padding: 1rem; }
+            .tabs { gap: 0.3rem; }
+            .tab { padding: 0.5rem 1rem; font-size: 0.85rem; }
+        }
+        @media print {
+            header, .tabs, .search-bar, .select-btn, .delete-btn, .shuffle-btn, .print-btn, .toggle-steps, .remove-btn, .logout-btn, .user-badge { display: none !important; }
+            .meal-plan-summary { display: block !important; }
+            .steps { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Meal Prep Planner</h1>
+        <p>Healthy meals for weight loss — easy prep, big results</p>
+    </div>
+    <div class="header-right">
+        <span class="user-badge">Hi, {{ username }}!</span>
+        <button class="logout-btn" onclick="doLogout()">Log Out</button>
+    </div>
+</header>
+
+<div class="tabs">
+    <button class="tab active" data-tab="all">All Meals</button>
+    <button class="tab" data-tab="breakfast">Breakfast</button>
+    <button class="tab" data-tab="lunch">Lunch</button>
+    <button class="tab" data-tab="dinner">Dinner</button>
+    <button class="tab" data-tab="selected">My Plan <span class="selected-count" id="selectedCount">0</span></button>
+    <button class="tab" data-tab="add">+ Add Meal</button>
+</div>
+
+<div class="search-bar" id="searchBar">
+    <input type="text" id="searchInput" placeholder="Search meals...">
+</div>
+
+<div class="add-section" id="addSection">
+    <div class="form-card">
+        <h2>Add a New Meal</h2>
+        <div class="form-group"><label>Meal Name</label><input type="text" id="newName" placeholder="e.g. Greek Yogurt Parfait"></div>
+        <div class="form-group"><label>Category</label><select id="newCategory"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option></select></div>
+        <div class="form-group"><label>Calories (approx)</label><input type="number" id="newCalories" placeholder="e.g. 350"></div>
+        <div class="form-group"><label>Prep Time</label><input type="text" id="newPrepTime" placeholder="e.g. 15 min"></div>
+        <div class="form-group"><label>Description</label><input type="text" id="newDescription" placeholder="Short description of the meal"></div>
+        <div class="form-group"><label>Ingredients</label><textarea id="newIngredients" placeholder="One ingredient per line"></textarea></div>
+        <div class="form-group"><label>Steps</label><textarea id="newSteps" placeholder="One step per line"></textarea><small>Write each step on a new line</small></div>
+        <button class="btn-submit" onclick="addCustomMeal()">Add Meal</button>
+    </div>
+</div>
+
+<div class="meal-plan-summary" id="mealPlanSummary">
+    <div style="text-align:center; margin-bottom:1rem;">
+        <button class="shuffle-btn" onclick="shufflePlan()">Shuffle My Meals</button>
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+    <div id="planContent"></div>
+</div>
+
+<div class="meal-grid" id="mealGrid">
+    <div class="loading">Loading meals...</div>
+</div>
+
+<script>
+let meals = [];
+let selectedIds = new Set();
+let currentTab = "all";
+let searchQuery = "";
+
+// ── API helpers ──────────────────────────────────────────
+
+async function api(url, options = {}) {
+    const res = await fetch(url, {
+        headers: {"Content-Type": "application/json"},
+        ...options,
+    });
+    if (res.status === 401) { window.location.href = "/login"; return null; }
+    return res;
+}
+
+async function loadMeals() {
+    const res = await api("/api/meals");
+    if (res) meals = await res.json();
+}
+
+async function loadSelections() {
+    const res = await api("/api/selections");
+    if (res) selectedIds = new Set(await res.json());
+}
+
+async function toggleSelectAPI(id) {
+    if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+        await api(`/api/selections/${id}`, {method: "DELETE"});
+    } else {
+        selectedIds.add(id);
+        await api(`/api/selections/${id}`, {method: "POST"});
+    }
+    updateSelectedCount();
+    renderMeals();
+    if (currentTab === "selected") renderPlanSummary();
+}
+
+async function doLogout() {
+    await api("/api/logout", {method: "POST"});
+    window.location.href = "/login";
+}
+
+// ── Rendering ────────────────────────────────────────────
+
+function getFilteredMeals() {
+    let filtered = meals;
+    if (currentTab === "selected") filtered = meals.filter(m => selectedIds.has(m.id));
+    else if (currentTab !== "all" && currentTab !== "add") filtered = meals.filter(m => m.category === currentTab);
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(m =>
+            m.name.toLowerCase().includes(q) ||
+            m.description.toLowerCase().includes(q) ||
+            m.ingredients.some(i => i.toLowerCase().includes(q))
+        );
+    }
+    return filtered;
+}
+
+function renderMeals() {
+    const grid = document.getElementById("mealGrid");
+    const filtered = getFilteredMeals();
+    if (currentTab === "add") { grid.style.display = "none"; return; }
+    grid.style.display = "grid";
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+            <div class="icon">${currentTab === 'selected' ? '📋' : '🔍'}</div>
+            <p>${currentTab === 'selected' ? 'No meals selected yet. Browse meals and click the circle to add them!' : 'No meals found.'}</p></div>`;
+        return;
+    }
+
+    grid.innerHTML = filtered.map(meal => `
+        <div class="meal-card ${selectedIds.has(meal.id) ? 'selected' : ''} ${!meal.isDefault ? 'custom' : ''}"
+             data-category="${meal.category}" data-id="${meal.id}">
+            <div class="category-stripe"></div>
+            ${!meal.isDefault ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteMeal(${meal.id})" title="Delete">✕</button>` : ''}
+            <button class="select-btn" onclick="event.stopPropagation(); toggleSelectAPI(${meal.id})" title="Add to plan">
+                ${selectedIds.has(meal.id) ? '✓' : ''}
+            </button>
+            <div class="card-body">
+                <div class="card-header">
+                    <h3>${meal.name}</h3>
+                    <span class="badge ${meal.category}">${meal.category}</span>
+                </div>
+                <div class="meta">
+                    <span>🔥 ${meal.calories} cal</span>
+                    <span>⏱ ${meal.prepTime}</span>
+                </div>
+                <p class="description">${meal.description}</p>
+                <p class="ingredients-line"><strong>Ingredients:</strong> ${meal.ingredients.join(', ')}</p>
+                <button class="toggle-steps" onclick="event.stopPropagation(); toggleSteps(this)">▼ Show Steps</button>
+                <ol class="steps">${meal.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderPlanSummary() {
+    const container = document.getElementById("planContent");
+    const selected = meals.filter(m => selectedIds.has(m.id));
+    if (selected.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>No meals selected yet!</p></div>`;
+        return;
+    }
+    const groups = {breakfast: [], lunch: [], dinner: []};
+    selected.forEach(m => groups[m.category].push(m));
+    const labels = {breakfast: "🌅 Breakfast", lunch: "☀️ Lunch", dinner: "🌙 Dinner"};
+    let html = '';
+    for (const [cat, list] of Object.entries(groups)) {
+        if (list.length === 0) continue;
+        html += `<div class="plan-section"><h3>${labels[cat]} (${list.length})</h3>`;
+        list.forEach(m => {
+            html += `<div class="plan-meal"><span><strong>${m.name}</strong> — ${m.calories} cal, ${m.prepTime}</span>
+                <button class="remove-btn" onclick="toggleSelectAPI(${m.id})">✕</button></div>`;
+        });
+        html += `</div>`;
+    }
+    const totalCal = selected.reduce((sum, m) => sum + m.calories, 0);
+    html += `<p style="text-align:center;margin-top:1rem;font-weight:600;">Total: ${selected.length} meals | Avg: ${Math.round(totalCal / selected.length)} cal/meal</p>`;
+    container.innerHTML = html;
+}
+
+function updateSelectedCount() {
+    document.getElementById("selectedCount").textContent = selectedIds.size;
+}
+
+// ── Actions ──────────────────────────────────────────────
+
+function toggleSteps(btn) {
+    const card = btn.closest('.meal-card');
+    card.classList.toggle('expanded');
+    btn.textContent = card.classList.contains('expanded') ? '▲ Hide Steps' : '▼ Show Steps';
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById("addSection").classList.toggle("visible", tab === "add");
+    document.getElementById("mealPlanSummary").classList.toggle("visible", tab === "selected");
+    document.getElementById("searchBar").style.display = (tab === "add") ? "none" : "block";
+    document.getElementById("mealGrid").style.display = (tab === "add") ? "none" : "grid";
+    if (tab === "selected") renderPlanSummary();
+    renderMeals();
+}
+
+async function addCustomMeal() {
+    const name = document.getElementById("newName").value.trim();
+    const category = document.getElementById("newCategory").value;
+    const calories = parseInt(document.getElementById("newCalories").value) || 0;
+    const prepTime = document.getElementById("newPrepTime").value.trim();
+    const description = document.getElementById("newDescription").value.trim();
+    const ingredients = document.getElementById("newIngredients").value.trim().split("\n").filter(Boolean);
+    const steps = document.getElementById("newSteps").value.trim().split("\n").filter(Boolean);
+
+    if (!name || !description || ingredients.length === 0 || steps.length === 0) {
+        alert("Please fill in all fields."); return;
+    }
+
+    const res = await api("/api/meals", {
+        method: "POST",
+        body: JSON.stringify({name, category, calories, prepTime, description, ingredients, steps}),
+    });
+    if (res && res.ok) {
+        const newMeal = await res.json();
+        meals.push(newMeal);
+        ["newName","newCalories","newPrepTime","newDescription","newIngredients","newSteps"].forEach(id => document.getElementById(id).value = "");
+        alert(`"${name}" added!`);
+        switchTab(category);
+    }
+}
+
+async function deleteMeal(id) {
+    if (!confirm("Delete this custom meal?")) return;
+    const res = await api(`/api/meals/${id}`, {method: "DELETE"});
+    if (res && res.ok) {
+        meals = meals.filter(m => m.id !== id);
+        selectedIds.delete(id);
+        updateSelectedCount();
+        renderMeals();
+    }
+}
+
+async function shufflePlan() {
+    await api("/api/selections", {method: "DELETE"});
+    selectedIds.clear();
+
+    const categories = ["breakfast", "lunch", "dinner"];
+    for (const cat of categories) {
+        const catMeals = meals.filter(m => m.category === cat);
+        const shuffled = catMeals.sort(() => Math.random() - 0.5);
+        const picks = shuffled.slice(0, cat === "dinner" ? 4 : 5);
+        for (const m of picks) {
+            selectedIds.add(m.id);
+            await api(`/api/selections/${m.id}`, {method: "POST"});
+        }
+    }
+    updateSelectedCount();
+    renderPlanSummary();
+    renderMeals();
+}
+
+// ── Init ─────────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", async () => {
+    await Promise.all([loadMeals(), loadSelections()]);
+    updateSelectedCount();
+    renderMeals();
+
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+    });
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+        searchQuery = e.target.value;
+        renderMeals();
+    });
+});
+</script>
+</body>
+</html>

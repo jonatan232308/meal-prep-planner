@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Prep Planner — Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #4a7c59 0%, #6a9e78 50%, #8bc49e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .logo { font-size: 3rem; margin-bottom: 0.5rem; }
+        h1 { font-size: 1.8rem; color: #2d2d2d; margin-bottom: 0.3rem; }
+        .subtitle { color: #6b6b6b; margin-bottom: 2rem; font-size: 0.95rem; }
+        .tabs {
+            display: flex;
+            margin-bottom: 1.5rem;
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            background: transparent;
+            color: #6b6b6b;
+            transition: all 0.3s;
+        }
+        .tab-btn.active { background: white; color: #4a7c59; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .form-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            color: #2d2d2d;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid #e2e0dc;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .form-group input:focus { border-color: #4a7c59; }
+        .btn {
+            width: 100%;
+            padding: 0.9rem;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #4a7c59;
+            color: white;
+            margin-top: 0.5rem;
+        }
+        .btn:hover { background: #3a6347; transform: translateY(-1px); }
+        .error {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            min-height: 1.2rem;
+        }
+        .success {
+            color: #4a7c59;
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo">🥗</div>
+        <h1>Meal Prep Planner</h1>
+        <p class="subtitle">Healthy meals for your family</p>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchMode('login')">Log In</button>
+            <button class="tab-btn" onclick="switchMode('register')">Sign Up</button>
+        </div>
+
+        <form id="authForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter your name" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn" id="submitBtn">Log In</button>
+            <div class="error" id="errorMsg"></div>
+            <div class="success" id="successMsg"></div>
+        </form>
+    </div>
+
+    <script>
+        let mode = "login";
+
+        function switchMode(m) {
+            mode = m;
+            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            event.target.classList.add("active");
+            document.getElementById("submitBtn").textContent = m === "login" ? "Log In" : "Create Account";
+            document.getElementById("errorMsg").textContent = "";
+            document.getElementById("successMsg").textContent = "";
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+            const errorEl = document.getElementById("errorMsg");
+            const successEl = document.getElementById("successMsg");
+            errorEl.textContent = "";
+            successEl.textContent = "";
+
+            const url = mode === "login" ? "/api/login" : "/api/register";
+            try {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({username, password}),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    successEl.textContent = data.message;
+                    setTimeout(() => window.location.href = "/", 500);
+                } else {
+                    errorEl.textContent = data.error;
+                }
+            } catch (err) {
+                errorEl.textContent = "Connection error. Try again.";
+            }
+        }
+    </script>
+</body>
+</html>
